@@ -1,6 +1,6 @@
 # go-rest-framework
 
-An opinionated web framework with go and mongo which can let you hit the ground running for simple REST APIs
+An opinionated Go web framework with MongoDB support for rapid REST API development. Simply define your models and get started with your basic CRUD routes.
 
 ## Features
 
