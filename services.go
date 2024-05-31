@@ -105,8 +105,12 @@ func Delete[K any](database *mongo.Database, id string) error {
 }
 
 func getPlural(noun string) string {
-	// TODO: make it package independent
-	noun = strings.ToLower(strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(noun, "*"), "[]"), "main."))
+	// Model type name could be a variation of the following.
+	// package.model, *package.model, []package.model, *[]package.model
+	// We're extracting the model name and returning its plural.
+	// "*models.Todo" becomes "todos" || "*[]models.Box" becomes "boxes"
+	splits := strings.Split(strings.TrimPrefix(strings.TrimPrefix(noun, "*"), "[]"), ".")
+	noun = strings.ToLower(splits[len(splits)-1])
 	ends := []string{"s", "sh", "ch", "x", "z"}
 	for _, end := range ends {
 		if strings.HasSuffix(noun, end) {
