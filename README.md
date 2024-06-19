@@ -192,4 +192,4 @@ func finisherService(db *mongo.Database, id string) error {
 
 - [ ]  DB agnostic
 - [ ]  Remove dependency from .env file.
-- [ ]  Tests
+- [ ]  Service and handler for Update. 

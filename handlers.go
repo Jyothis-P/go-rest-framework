@@ -28,6 +28,19 @@ func RegisterCRUDRoutes[T any](pathPrefix string, r *mux.Router, ctx *Ctx) *mux.
 	return subRouter
 }
 
+func AddReadRoutes[T any](r *mux.Router, ctx *Ctx) {
+	r.Handle("/", H{Ctx: ctx, Fn: GetAllHandler[T]}).Methods("GET")
+	r.Handle("/{id}", H{Ctx: ctx, Fn: GetHandler[T]}).Methods("GET")
+}
+
+func AddDeleteRoute[T any](r *mux.Router, ctx *Ctx) {
+	r.Handle("/{id}", H{Ctx: ctx, Fn: DeleteHandler[T]}).Methods("DELETE")
+}
+
+func AddCreateRoute[T any](r *mux.Router, ctx *Ctx) {
+	r.Handle("/", H{Ctx: ctx, Fn: CreateHandler[T]}).Methods("POST")
+}
+
 func GetHandler[K any](ctx *Ctx, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	var object K
