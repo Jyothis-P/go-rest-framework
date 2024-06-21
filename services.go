@@ -16,60 +16,47 @@ import (
 // models.Object is stored in the objects collection.
 // Automatically adds the record to the collection with a plural, lowercase name.
 func Create[K interface{}](database *mongo.Database, object K) (*mongo.InsertOneResult, error) {
-	log.Printf("Type -> %T\n", object)
-	collectionName := getPlural(fmt.Sprintf("%T", object))
-	log.Println("Plural -> ", collectionName)
-	log.Println("Create")
-	collection := database.Collection(collectionName)
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	collection, ctx, cancel := getCollectionAndContext(database, object)
 	defer cancel()
 	res, err := collection.InsertOne(ctx, object)
 	if err != nil {
 		log.Println("Error adding object to database.", err)
 		return nil, err
 	}
-	log.Println("Inserted record to " + collectionName + " collection.")
+	log.Println("Inserted record to " + collection.Name() + " collection.")
 	return res, err
 }
 
 // Reads all the objects of the given type.
 func Read[K any](database *mongo.Database, objects *[]K) error {
-	log.Printf("Type -> %T\n", objects)
-	collectionName := getPlural(fmt.Sprintf("%T", objects))
-	log.Println("Plural -> ", collectionName)
-	collection := database.Collection(collectionName)
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	collection, ctx, cancel := getCollectionAndContext(database, objects)
 	defer cancel()
 
 	cur, err := collection.Find(ctx, bson.D{})
 	if err != nil {
-		log.Println("error retrieving all objects of "+collectionName, err)
+		log.Println("error retrieving all objects of "+collection.Name(), err)
 		return err
 	}
 	err = cur.All(ctx, objects)
 	if err != nil {
-		log.Println("error getting data from cursor "+collectionName, err)
+		log.Println("error getting data from cursor "+collection.Name(), err)
 		return err
 	}
 	return nil
 }
 
 func ReadOne[K any](database *mongo.Database, object *K, id string) error {
-	log.Printf("Type -> %T\n", object)
-	collectionName := getPlural(fmt.Sprintf("%T", object))
-	log.Println("Plural -> ", collectionName)
-	collection := database.Collection(collectionName)
+	collection, ctx, cancel := getCollectionAndContext(database, object)
+	defer cancel()
 
 	// Converting the id from the hex string to the ObjectID format that mongo use
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		log.Println("Error converting group id to ObjectId:", err)
+		log.Println("Error converting id to ObjectId:", err)
 		return err
 	}
 	filter := bson.D{{Key: "_id", Value: objectID}}
 	log.Println("Filter: ", filter)
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
 	err = collection.FindOne(ctx, filter).Decode(&object)
 	log.Println("Object: ", object)
 	if err != nil {
@@ -79,13 +66,29 @@ func ReadOne[K any](database *mongo.Database, object *K, id string) error {
 	return nil
 }
 
+func ReplaceOne[K any](database *mongo.Database, object *K, id string) error {
+	collection, ctx, cancel := getCollectionAndContext(database, object)
+	defer cancel()
+
+	// Converting the id from the hex string to the ObjectID format that mongo use
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Println("Error converting id to ObjectId:", err)
+		return err
+	}
+	filter := bson.D{{Key: "_id", Value: objectID}}
+	res, err := collection.ReplaceOne(ctx, filter, *object)
+	if err != nil {
+		log.Println("Error replacing object:", err)
+		return err
+	}
+	log.Println("Replaced object.", res.ModifiedCount)
+	return nil
+}
+
 // about as dumb as it gets. Works for atomics. Wouldn't recommend for anything with dependencies.
 func Delete[K any](database *mongo.Database, id string) error {
-	log.Printf("Type -> %T\n", *new(K))
-	collectionName := getPlural(fmt.Sprintf("%T", *new(K)))
-	log.Println("Plural -> ", collectionName)
-	collection := database.Collection(collectionName)
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	collection, ctx, cancel := getCollectionAndContext(database, *new(K))
 	defer cancel()
 
 	// Converting the group id from the hex string to the ObjectID format that mongo use
@@ -118,4 +121,13 @@ func getPlural(noun string) string {
 		}
 	}
 	return noun + "s"
+}
+
+func getCollectionAndContext[K any](database *mongo.Database, object K) (*mongo.Collection, context.Context, context.CancelFunc) {
+	log.Printf("Type -> %T\n", object)
+	collectionName := getPlural(fmt.Sprintf("%T", object))
+	log.Println("Plural -> ", collectionName)
+	collection := database.Collection(collectionName)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	return collection, ctx, cancel
 }

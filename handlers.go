@@ -23,6 +23,7 @@ func RegisterCRUDRoutes[T any](pathPrefix string, r *mux.Router, ctx *Ctx) *mux.
 	subRouter := r.PathPrefix(pathPrefix).Subrouter()
 	subRouter.Handle("/", H{Ctx: ctx, Fn: GetAllHandler[T]}).Methods("GET")
 	subRouter.Handle("/{id}", H{Ctx: ctx, Fn: GetHandler[T]}).Methods("GET")
+	subRouter.Handle("/{id}", H{Ctx: ctx, Fn: ReplaceHandler[T]}).Methods("PUT")
 	subRouter.Handle("/", H{Ctx: ctx, Fn: CreateHandler[T]}).Methods("POST")
 	subRouter.Handle("/{id}", H{Ctx: ctx, Fn: DeleteHandler[T]}).Methods("DELETE")
 	return subRouter
@@ -113,6 +114,37 @@ func CreateHandler[T any](ctx *Ctx, w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Object created!, id: %s", *res)
+}
+
+func ReplaceHandler[T any](ctx *Ctx, w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	var object T
+	err := decoder.Decode(&object)
+
+	// Let the gatekeeping begin.
+	if err != nil {
+		log.Println("Error decoding the object from the request.")
+		msg, statusCode := validateJsonError(err)
+		http.Error(w, msg, statusCode)
+		log.Println(msg)
+		return
+	}
+
+	log.Println("Decoded object: ", object)
+
+	// Attempting to save the object to the db.
+	err = ReplaceOne(ctx.DB, &object, vars["id"])
+	if err != nil {
+		log.Print("Error replacing object in db.")
+		log.Print(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Object updated!")
 }
 
 func DeleteHandler[T any](ctx *Ctx, w http.ResponseWriter, r *http.Request) {
