@@ -29,17 +29,33 @@ func RegisterCRUDRoutes[T any](pathPrefix string, r *mux.Router, ctx *Ctx) *mux.
 	return subRouter
 }
 
+// Adds Read and ReadOne routes for type T to the router.
+// GET /
+// GET /{id}
 func AddReadRoutes[T any](r *mux.Router, ctx *Ctx) {
 	r.Handle("/", H{Ctx: ctx, Fn: GetAllHandler[T]}).Methods("GET")
 	r.Handle("/{id}", H{Ctx: ctx, Fn: GetHandler[T]}).Methods("GET")
 }
 
+// Adds Delete route for type T to the router.
+// DELETE /{id}
 func AddDeleteRoute[T any](r *mux.Router, ctx *Ctx) {
 	r.Handle("/{id}", H{Ctx: ctx, Fn: DeleteHandler[T]}).Methods("DELETE")
 }
 
+// Adds Create route for type T to the router.
+// POST /
+// body must containt the object as defined by the model and its struct tags.
 func AddCreateRoute[T any](r *mux.Router, ctx *Ctx) {
 	r.Handle("/", H{Ctx: ctx, Fn: CreateHandler[T]}).Methods("POST")
+}
+
+// Adds Replace route for type T to the router.
+// PUT /{id}
+// body must contain the entire object with the required changes.
+// if any field is not supplied(except _id), it will be reset to its nil value.
+func AddReplaceRoute[T any](r *mux.Router, ctx *Ctx) {
+	r.Handle("/{id}", H{Ctx: ctx, Fn: ReplaceHandler[T]}).Methods("PUT")
 }
 
 func GetHandler[K any](ctx *Ctx, w http.ResponseWriter, r *http.Request) {
@@ -151,6 +167,7 @@ func DeleteHandler[T any](ctx *Ctx, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	// Adding additional checks in this generic function would be difficult.
+	// mongodb does not support cascade deletes.
 	// If you need more validation and dependency checking, please use a seperate handler for the same.
 	err := Delete[T](ctx.DB, vars["id"])
 	if err != nil {
