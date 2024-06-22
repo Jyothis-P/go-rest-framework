@@ -3,7 +3,7 @@ package grf_test
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -55,13 +55,12 @@ func TestCreateHandler(t *testing.T) {
 		// Compile the regex pattern
 		r, err := regexp.Compile(pattern)
 		if err != nil {
-			fmt.Println("There was an error compiling the regex pattern:", err)
+			log.Fatalln("There was an error compiling the regex pattern:", err)
 			return
 		}
 
 		act := res.Body.String()
 		exp := `Object created!, id: \{ObjectID\("[0-9a-fA-F]{24}"\)}`
-		fmt.Println("Res:", act)
 		// Check if the pattern matches the string
 		match := r.MatchString(res.Body.String())
 		if !match {

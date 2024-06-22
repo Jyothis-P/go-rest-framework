@@ -123,10 +123,15 @@ func getPlural(noun string) string {
 	return noun + "s"
 }
 
-func getCollectionAndContext[K any](database *mongo.Database, object K) (*mongo.Collection, context.Context, context.CancelFunc) {
-	log.Printf("Type -> %T\n", object)
+func getCollection[K any](database *mongo.Database) *mongo.Collection {
+	object := new(K)
 	collectionName := getPlural(fmt.Sprintf("%T", object))
-	log.Println("Plural -> ", collectionName)
+	collection := database.Collection(collectionName)
+	return collection
+}
+
+func getCollectionAndContext[K any](database *mongo.Database, object K) (*mongo.Collection, context.Context, context.CancelFunc) {
+	collectionName := getPlural(fmt.Sprintf("%T", object))
 	collection := database.Collection(collectionName)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	return collection, ctx, cancel
